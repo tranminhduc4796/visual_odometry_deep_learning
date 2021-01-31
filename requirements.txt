@@ -1,0 +1,10 @@
+tensorboardX==2.1
+torch==1.7.1
+torchvision==0.4.1
+matplotlib==3.3.3
+numpy==1.19.3
+spatialmath-python==0.8.8
+opencv-contrib-python==4.4.0.46
+opencv-python==4.4.0.46
+scipy==1.5.4
+tqdm==4.55.1

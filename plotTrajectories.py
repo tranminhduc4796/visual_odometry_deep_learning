@@ -1,10 +1,9 @@
-from lieFunctions import *
 import os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import warnings
-from lieFunctions import euler_to_rotMat
+from spatialmath.base import eul2r, rpy2r, q2r
 
 matplotlib.use('Agg')
 warnings.filterwarnings("ignore")
@@ -41,13 +40,13 @@ def plot_seq(exp_dir, seq, seq_len, trajectory, datadir, cmd, epoch):
         else:
 
             if cmd.outputParameterization == 'default':
-                R = axisAngle_to_rotMat(np.transpose(relativePose[:3]))
+                R = rpy2r(np.transpose(relativePose[:3]))
                 t = np.reshape(relativePose[3:], (3, 1))
             elif cmd.outputParameterization == 'euler':
-                R = euler_to_rotMat(relativePose[0] / 10., relativePose[1] / 10., relativePose[2] / 10., seq='xyz')
+                R = eul2r(relativePose[0] / 10., relativePose[1] / 10., relativePose[2] / 10., seq='xyz')
                 t = np.reshape(relativePose[3:], (3, 1))
             elif cmd.outputParameterization == 'quaternion':
-                R = quat_to_rotMat(np.transpose(relativePose[:4]))
+                R = q2r(np.transpose(relativePose[:4]))
                 t = np.reshape(relativePose[4:], (3, 1))
 
             T_1 = fullT[frame, :]

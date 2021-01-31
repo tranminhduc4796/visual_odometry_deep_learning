@@ -17,7 +17,7 @@ parser.add_argument('-activation', help='Activation function to be used', type=s
                     choices=['relu', 'selu'], default='relu')
 parser.add_argument('-dropout', help='Drop ratio of dropout at penultimate linear layer, if dropout is to be used.',
                     type=float, default=0.1)
-parser.add_argument('-numLSTMCells', help='Number of LSTM cells to stack together', type=int,
+parser.add_argument('-num_lstm_cells', help='Number of LSTM cells to stack together', type=int,
                     default=2)
 parser.add_argument('-imageWidth', help='Width of the input image', type=int, default=1280)
 parser.add_argument('-imageHeight', help='Height of the input image', type=int, default=384)

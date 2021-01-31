@@ -1,5 +1,5 @@
 import helpers
-from lieFunctions import *
+from spatialmath.base import r2q, tr2eul, tr2rpy
 import numpy as np
 import os
 import cv2
@@ -52,11 +52,10 @@ class KITTIDataset(Dataset):
 
         # Parameterization to be used to represent the transformation
         self.parameterization = parameterization
-
         # Variable to hold length of the dataset
-        self.len = 0
+        self.length = 0
         # Variables used as caches to implement quick __getitem__ retrieves
-        self.cumulativeLengths = [0 for i in range(len(self.sequences))]
+        self.cumulativeLengths = [0] * len(self.sequences)
 
         # Check if the parameters passed are consistent. Throw an error otherwise
         # KITTI has ground-truth pose information only for sequences 00 to 10
@@ -74,15 +73,14 @@ class KITTIDataset(Dataset):
             if self.endFrames[i] < 0 or self.endFrames[i] <= self.startFrames[i] or \
                     self.endFrames[i] > self.KITTIMaxFrames[seq]:
                 raise ValueError('Invalid endFrame for sequence', str(seq).zfill(2))
-            self.len += (endFrames[i] - startFrames[i])
-            self.cumulativeLengths[i] = self.len
-        if self.len < 0:
+            self.length += (endFrames[i] - startFrames[i])
+            self.cumulativeLengths[i] = self.length
+        if self.length < 0:
             raise ValueError('Length of the dataset cannot be negative.')
 
     # Get dataset size
     def __len__(self):
-
-        return self.len
+        return self.length
 
     def __getitem__(self, idx):
 
@@ -136,23 +134,23 @@ class KITTIDataset(Dataset):
 
         # Default parameterization: representation rotations as axis-angle vectors
         if self.parameterization == 'default':
-            axisAngle = (torch.from_numpy(np.asarray(rotMat_to_axisAngle(R))).view(-1, 3)).float().cuda()
+            axisAngle = (torch.from_numpy(np.asarray(tr2rpy(R))).view(-1, 3)).float().cuda()
             return inputTensor, axisAngle, t, seqIdx, frame1, frame2, endOfSequence
         # Quaternion parameterization: representation rotations as quaternions
         elif self.parameterization == 'quaternion':
-            quat = np.asarray(rotMat_to_quat(R)).reshape((1, 4))
+            quat = np.asarray(r2q(R)).reshape((1, 4))
             quaternion = (torch.from_numpy(quat).view(-1, 4)).float().cuda()
             return inputTensor, quaternion, t, seqIdx, frame1, frame2, endOfSequence
         # Euler parameterization: representation rotations as Euler angles
         elif self.parameterization == 'euler':
-            rx, ry, rz = rotMat_to_euler(R, seq='xyz')
+            rx, ry, rz = tr2eul(R, seq='xyz')
             euler = (10. * torch.FloatTensor([rx, ry, rz]).view(-1, 3)).cuda()
             return inputTensor, euler, t, seqIdx, frame1, frame2, endOfSequence
         elif self.parameterization == 'se3':
 
             R = pose2[0:3, 0:3]
             t = (torch.from_numpy(pose2[0:3, 3]).view(-1, 3)).float().cuda()
-            quat = np.asarray(rotMat_to_quat(R)).reshape((1, 4))
+            quat = np.asarray(r2q(R)).reshape((1, 4))
             quaternion = (torch.from_numpy(quat).view(-1, 4)).float().cuda()
             return inputTensor, quaternion, t, seqIdx, frame1, frame2, endOfSequence
 
