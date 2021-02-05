@@ -19,8 +19,8 @@ parser.add_argument('-dropout', help='Drop ratio of dropout at penultimate linea
                     type=float, default=0.1)
 parser.add_argument('-num_lstm_cells', help='Number of LSTM cells to stack together', type=int,
                     default=2)
-parser.add_argument('-imageWidth', help='Width of the input image', type=int, default=1280)
-parser.add_argument('-imageHeight', help='Height of the input image', type=int, default=384)
+parser.add_argument('-img_w', help='Width of the input image', type=int, default=1280)
+parser.add_argument('-img_h', help='Height of the input image', type=int, default=384)
 
 """ Dataset """
 parser.add_argument('-dataset', help='dataset to be used for training the network', default='KITTI')
@@ -30,8 +30,8 @@ parser.add_argument('-outputParameterization', help='Parameterization of egomoti
 """ Hyper-parameters """
 parser.add_argument('-lr', help='Learning rate', type=float, default=1e-5)
 parser.add_argument('-momentum', help='Momentum', type=float, default=0.009)
-parser.add_argument('-weightDecay', help='Weight decay', type=float, default=0.)
-parser.add_argument('-lrDecay', help='Learning rate decay factor', type=float, default=0.)
+parser.add_argument('-weight_decay', help='Weight decay', type=float, default=0.)
+parser.add_argument('-lr_decay', help='Learning rate decay factor', type=float, default=0.)
 parser.add_argument('-iterations', help='Number of iterations after loss is to be computed',
                     type=int, default=100)
 parser.add_argument('-beta1', help='beta1 for ADAM optimizer', type=float, default=0.8)
@@ -47,7 +47,7 @@ parser.add_argument('-lrScheduler', help='Learning rate scheduler', type=str.low
                     choices=['cosine', 'plateau'], default='cosine')
 
 parser.add_argument('-epochs', help='Number of epochs', type=int, default=200)
-parser.add_argument('-seqLen', help='train batch size', type=int, default=300)
+parser.add_argument('-seq_len', help='train batch size', type=int, default=300)
 
 parser.add_argument('-scf', help='Scaling factor for the rotation loss terms',
                     type=float, default=100)
@@ -55,7 +55,7 @@ parser.add_argument('-gamma', help='For L2 regularization',
                     type=float, default=1.0)
 
 """ Paths """
-parser.add_argument('-cachedir',
+parser.add_argument('-cache_dir',
                     help='(Relative path to) directory in which to store logs, models, plots, etc.',
                     type=str, default='cache')
 parser.add_argument('-datadir', help='Absolute path to the directory that holds the dataset',

@@ -2,25 +2,20 @@
 Trainer class. Handles training and validation
 """
 from helpers import get_gpu_memory_map
-from KITTIDataset import KITTIDataset
-from Model import DeepVO
 import numpy as np
 import os
 import sys
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
-import torch.optim as optim
 from tqdm import tqdm, trange
-from random import randint
 
 
 class Trainer:
-    def __init__(self, args, epoch, model, train_set, val_set, loss_fn, optimizer, scheduler=None,
-                 gradClip=None):
+    def __init__(self, config, epoch, model, train_set, val_set, optimizer, scheduler=None):
 
-        self.args = args
-        self.maxEpochs = self.args.epochs
+        self.config = config
+        self.maxEpochs = self.config.epochs
         self.curEpoch = epoch
 
         # Model to train
@@ -61,8 +56,8 @@ class Trainer:
         totalLosses = []
 
         # Handle debug mode here
-        if self.args.debug is True:
-            numTrainIters = self.args.debugIters
+        if self.config.debug is True:
+            numTrainIters = self.config.debugIters
         else:
             numTrainIters = len(self.train_set)
 
@@ -71,7 +66,7 @@ class Trainer:
         # Choose a generator (for iterating over the dataset, based on whether or not the
         # sbatch flag is set to True). If sbatch is True, we're probably running on a cluster
         # and do not want an interactive output. So, could suppress tqdm and print statements
-        if self.args.sbatch is True:
+        if self.config.sbatch is True:
             gen = range(numTrainIters)
         else:
             gen = trange(numTrainIters)
@@ -84,8 +79,7 @@ class Trainer:
 
         # Run a pass of the dataset
         for i in gen:
-
-            if self.args.profileGPUUsage is True:
+            if self.config.profileGPUUsage is True:
                 gpu_memory_map = get_gpu_memory_map()
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
 
@@ -102,14 +96,14 @@ class Trainer:
 
             # Handle debug mode here. Force execute the below if statement in the
             # last debug iteration
-            if self.args.debug is True:
+            if self.config.debug is True:
                 if i == numTrainIters - 1:
                     endOfSeq = True
 
             elapsedFrames += 1
 
             # if endOfSeq is True:
-            if elapsedFrames >= self.args.seqLen or endOfSeq is True:
+            if elapsedFrames >= self.config.seq_len or endOfSeq is True:
 
                 # Flush gradient buffers for next forward pass
                 self.model.zero_grad()
@@ -133,7 +127,7 @@ class Trainer:
                 reg_loss_R += paramsDict['LSTM_R.weight_hh_l0'].norm(2)
                 reg_loss_R += paramsDict['LSTM_R.bias_ih_l0'].norm(2)
                 reg_loss_R += paramsDict['LSTM_R.bias_hh_l0'].norm(2)
-                if self.args.num_lstm_cells == 2:
+                if self.config.num_lstm_cells == 2:
                     reg_loss_R = paramsDict['LSTM_R.weight_ih_l1'].norm(2)
                     reg_loss_R += paramsDict['LSTM_R.weight_hh_l1'].norm(2)
                     reg_loss_R += paramsDict['LSTM_R.bias_ih_l1'].norm(2)
@@ -144,14 +138,14 @@ class Trainer:
                 reg_loss_T += paramsDict['LSTM_T.weight_hh_l0'].norm(2)
                 reg_loss_T += paramsDict['LSTM_T.bias_ih_l0'].norm(2)
                 reg_loss_T += paramsDict['LSTM_T.bias_hh_l0'].norm(2)
-                if self.args.num_lstm_cells == 2:
+                if self.config.num_lstm_cells == 2:
                     reg_loss_T = paramsDict['LSTM_T.weight_ih_l1'].norm(2)
                     reg_loss_T += paramsDict['LSTM_T.weight_hh_l1'].norm(2)
                     reg_loss_T += paramsDict['LSTM_T.bias_ih_l1'].norm(2)
                     reg_loss_T += paramsDict['LSTM_T.bias_hh_l1'].norm(2)
 
                 totalregLoss = sum([reg_loss_R, reg_loss_T])
-                self.loss = sum([self.args.gamma * totalregLoss, self.loss])
+                self.loss = sum([self.config.gamma * totalregLoss, self.loss])
 
                 # Compute gradients
                 self.loss.backward()
@@ -182,10 +176,10 @@ class Trainer:
                     transgradNorm))
 
                 # Perform gradient clipping, if enabled
-                if self.args.gradClip is not None:
+                if self.config.gradClip is not None:
 
-                    torch.nn.utils.clip_grad_norm_(rotParameters, self.args.gradClip)
-                    torch.nn.utils.clip_grad_norm_(transParameters, self.args.gradClip)
+                    torch.nn.utils.clip_grad_norm_(rotParameters, self.config.gradClip)
+                    torch.nn.utils.clip_grad_norm_(transParameters, self.config.gradClip)
                     paramIt = 0
                     rotgradNorm = 0
                     for p in self.model.parameters():
@@ -221,8 +215,8 @@ class Trainer:
                 tqdm.write('Total Loss: ' + str(np.mean(totalLosses)), file=sys.stdout)
                 # If it's the end of sequence, reset hidden states
                 if endOfSeq is True:
-                    self.model.reset_LSTM_hidden()
-                self.model.detach_LSTM_hidden()
+                    self.model.reset_lstm_hidden()
+                self.model.detach_lstm_hidden()
 
                 # Reset loss variables
                 self.loss = torch.zeros(1, dtype=torch.float32).cuda()
@@ -242,13 +236,13 @@ class Trainer:
         totalLosses = []
 
         # Handle debug switch here
-        if self.args.debug is True:
-            numValIters = self.args.debugIters
+        if self.config.debug is True:
+            numValIters = self.config.debugIters
         else:
             numValIters = len(self.val_set)
 
         elapsedFrames = 0
-        if self.args.sbatch is True:
+        if self.config.sbatch is True:
             gen = range(numValIters)
         else:
             gen = trange(numValIters)
@@ -258,7 +252,7 @@ class Trainer:
         labelTensor_trans = None
 
         for i in gen:
-            if self.args.profileGPUUsage is True:
+            if self.config.profileGPUUsage is True:
                 gpu_memory_map = get_gpu_memory_map()
                 tqdm.write('GPU usage: ' + str(gpu_memory_map[0]), file=sys.stdout)
 
@@ -275,7 +269,7 @@ class Trainer:
 
             elapsedFrames += 1
 
-            if elapsedFrames >= self.args.seqLen or endOfSeq is True:
+            if elapsedFrames >= self.config.seq_len or endOfSeq is True:
 
                 # Feed it through the model
                 rot_pred, trans_pred, _ = self.model.forward(inputTensor)
@@ -289,11 +283,11 @@ class Trainer:
                 elapsedFrames = 0
 
                 if traj_pred is None:
-                    traj_pred = np.concatenate((rot_pred.data.cpu().numpy().squeeze(1), \
+                    traj_pred = np.concatenate((rot_pred.data.cpu().numpy().squeeze(1),
                                                 trans_pred.data.cpu().numpy().squeeze(1)), axis=1)
                 else:
 
-                    cur_pred = np.concatenate((rot_pred.data.cpu().numpy().squeeze(1), \
+                    cur_pred = np.concatenate((rot_pred.data.cpu().numpy().squeeze(1),
                                                trans_pred.data.cpu().numpy().squeeze(1)), axis=1)
 
                     traj_pred = np.concatenate((traj_pred, cur_pred), axis=0)
@@ -303,7 +297,7 @@ class Trainer:
                 totalLosses.append(curloss_rot + curloss_trans)
 
                 # Detach for the next forward pass
-                self.model.detach_LSTM_hidden()
+                self.model.detach_lstm_hidden()
 
                 if endOfSeq is True:
                     # Print stats
@@ -311,7 +305,7 @@ class Trainer:
                                str(np.mean(transLosses)), file=sys.stdout)
                     tqdm.write('Total Loss: ' + str(np.mean(totalLosses)), file=sys.stdout)
                     # Write predicted trajectory to file
-                    saveFile = os.path.join(self.args.expDir, 'plots', 'traj', str(seq).zfill(2), \
+                    saveFile = os.path.join(self.config.expDir, 'plots', 'traj', str(seq).zfill(2), \
                                             'traj_' + str(self.curEpoch).zfill(3) + '.txt')
                     np.savetxt(saveFile, traj_pred, newline='\n')
 
@@ -319,9 +313,9 @@ class Trainer:
                     traj_pred = None
 
                     # Reset LSTM hidden states
-                    self.model.reset_LSTM_hidden()
+                    self.model.reset_lstm_hidden()
                     # Detach for the next forward pass
-                    self.model.detach_LSTM_hidden()
+                    self.model.detach_lstm_hidden()
 
                     rotLosses = []
                     transLosses = []

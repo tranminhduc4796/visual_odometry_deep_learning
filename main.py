@@ -1,11 +1,12 @@
 """
 Main script: Train and test DeepVO on the KITTI odometry benchmark
 """
+import os
+import time
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -14,8 +15,8 @@ import torch.optim as optim
 import args
 from KITTIDataset import KITTIDataset
 from Model import DeepVO
-from plotTrajectories import plot_seq
 from Trainer import Trainer
+from plotTrajectories import plot_seq
 
 # The following two lines are needed because, conda on Mila SLURM sets
 # 'Qt5Agg' as the default version for matplotlib.use(). The interpreter
@@ -49,10 +50,10 @@ torch.set_default_tensor_type(torch.cuda.FloatTensor)
 
 # Create directory structure, to store results
 config.basedir = os.path.dirname(os.path.realpath(__file__))
-if not os.path.exists(os.path.join(config.basedir, config.cachedir, config.dataset)):
-    os.makedirs(os.path.join(config.basedir, config.cachedir, config.dataset))
+if not os.path.exists(os.path.join(config.basedir, config.cache_dir, config.dataset)):
+    os.makedirs(os.path.join(config.basedir, config.cache_dir, config.dataset))
 
-config.expDir = os.path.join(config.basedir, config.cachedir, config.dataset, config.expID)
+config.expDir = os.path.join(config.basedir, config.cache_dir, config.dataset, config.expID)
 if not os.path.exists(config.expDir):
     os.makedirs(config.expDir)
     print('Created dir: ', config.expDir)
@@ -85,13 +86,10 @@ if config.tensorboardX is True:
 """ Model Definition + Weight init + FlowNet weight loading """
 
 # Get the definition of the model
-if config.modelType == 'flownet' or config.modelType is None:
-    # Model definition without batchnorm
-
-    deepVO = DeepVO(config.imageWidth, config.imageHeight, config.seqLen, 1, activation=config.activation,
-                    parameterization=config.outputParameterization, \
-                    batchnorm=False, dropout=config.dropout, flownet_weights_path=config.loadModel,
-                    num_lstm_cells=config.num_lstm_cells)
+deepVO = DeepVO(config.img_w, config.img_h, config.seq_len, 1, activation=config.activation,
+                parameterization=config.outputParameterization,
+                dropout=config.dropout, flownet_weights_path=config.loadModel,
+                num_lstm_cells=config.num_lstm_cells)
 
 deepVO.init_weights()
 # CUDAfy
@@ -103,13 +101,15 @@ print('Loaded! Good to launch!')
 criterion = nn.MSELoss(reduction='sum')
 
 if config.optMethod == 'adam':
-    optimizer = optim.Adam(deepVO.parameters(), lr=config.lr, betas=(config.beta1, config.beta2), weight_decay=config.weightDecay,
+    optimizer = optim.Adam(deepVO.parameters(), lr=config.lr, betas=(config.beta1, config.beta2),
+                           weight_decay=config.weight_decay,
                            amsgrad=False)
 elif config.optMethod == 'sgd':
-    optimizer = optim.SGD(deepVO.parameters(), lr=config.lr, momentum=config.momentum, weight_decay=config.weightDecay,
+    optimizer = optim.SGD(deepVO.parameters(), lr=config.lr, momentum=config.momentum, weight_decay=config.weight_decay,
                           nesterov=False)
 else:
-    optimizer = optim.Adagrad(deepVO.parameters(), lr=config.lr, lr_decay=config.lrDecay, weight_decay=config.weightDecay)
+    optimizer = optim.Adagrad(deepVO.parameters(), lr=config.lr, lr_decay=config.lr_decay,
+                              weight_decay=config.weight_decay)
 
 # Initialize scheduler, if specified
 if config.lrScheduler is not None:
@@ -152,14 +152,14 @@ for epoch in range(config.epochs):
     val_endFrames = [4500]
     kitti_train = KITTIDataset(config.datadir, train_seq, train_startFrames, train_endFrames,
                                parameterization=config.outputParameterization,
-                               width=config.imageWidth, height=config.imageHeight)
+                               width=config.img_w, height=config.img_h)
     kitti_val = KITTIDataset(config.datadir, val_seq, val_startFrames, val_endFrames,
                              parameterization=config.outputParameterization,
-                             width=config.imageWidth, height=config.imageHeight)
+                             width=config.img_w, height=config.img_h)
 
     # Initialize a trainer (Note that any accumulated gradients on the model are flushed
     # upon creation of this Trainer object)
-    trainer = Trainer(config, epoch, deepVO, kitti_train, kitti_val, criterion, optimizer,
+    trainer = Trainer(config, epoch, deepVO, kitti_train, kitti_val, optimizer,
                       scheduler=None)
 
     # weightb4 = []

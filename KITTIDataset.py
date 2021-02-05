@@ -96,12 +96,12 @@ class KITTIDataset(Dataset):
             offset = idx - self.cumulativeLengths[seqKey - 1]
 
         # Map the offset to frame ids
-        frame1 = self.startFrames[seqKey] + offset
-        frame2 = frame1 + 1
+        frame1_idx = self.startFrames[seqKey] + offset
+        frame2_idx = frame1_idx + 1
 
         # Flag to indicate end of sequence
         endOfSequence = False
-        if frame2 == self.endFrames[seqKey]:
+        if frame2_idx == self.endFrames[seqKey]:
             endOfSequence = True
 
         # return (seqIdx, frame1, frame2)
@@ -109,8 +109,8 @@ class KITTIDataset(Dataset):
         # Directory containing images for the current sequence
         curImgDir = os.path.join(self.imgDir, str(seqIdx).zfill(2), 'image_2')
         # Read in the corresponding images
-        img1 = cv2.cvtColor(cv2.imread(os.path.join(curImgDir, str(frame1).zfill(6) + '.png')), cv2.COLOR_BGR2RGB)
-        img2 = cv2.cvtColor(cv2.imread(os.path.join(curImgDir, str(frame2).zfill(6) + '.png')), cv2.COLOR_BGR2RGB)
+        img1 = cv2.cvtColor(cv2.imread(os.path.join(curImgDir, str(frame1_idx).zfill(6) + '.png')), cv2.COLOR_BGR2RGB)
+        img2 = cv2.cvtColor(cv2.imread(os.path.join(curImgDir, str(frame2_idx).zfill(6) + '.png')), cv2.COLOR_BGR2RGB)
         # Preprocess : returned after mean subtraction, resize and permute to N x C x W x H dims
         img1 = self.preprocess_img(img1)
         img2 = self.preprocess_img(img2)
@@ -123,42 +123,36 @@ class KITTIDataset(Dataset):
 
         # Load pose ground-truth
         poses = np.loadtxt(os.path.join(self.poseDir, str(seqIdx).zfill(2) + '.txt'), dtype=np.float32)
-        pose1 = np.vstack([np.reshape(poses[frame1].astype(np.float32), (3, 4)), [[0., 0., 0., 1.]]])
-        pose2 = np.vstack([np.reshape(poses[frame2].astype(np.float32), (3, 4)), [[0., 0., 0., 1.]]])
+        pose1 = np.vstack([np.reshape(poses[frame1_idx].astype(np.float32), (3, 4)), [[0., 0., 0., 1.]]])
+        pose2 = np.vstack([np.reshape(poses[frame2_idx].astype(np.float32), (3, 4)), [[0., 0., 0., 1.]]])
         # Compute relative pose from frame1 to frame2
         pose2wrt1 = np.dot(np.linalg.inv(pose1), pose2)
         R = pose2wrt1[0:3, 0:3]
         t = (torch.from_numpy(pose2wrt1[0:3, 3]).view(-1, 3)).float().cuda()
-        T = np.concatenate(
-            (np.concatenate([R, np.reshape(pose2wrt1[0:3, 3], (3, -1))], axis=1), [[0.0, 0.0, 0.0, 1.0]]), axis=0)
 
         # Default parameterization: representation rotations as axis-angle vectors
         if self.parameterization == 'default':
             axisAngle = (torch.from_numpy(np.asarray(tr2rpy(R))).view(-1, 3)).float().cuda()
-            return inputTensor, axisAngle, t, seqIdx, frame1, frame2, endOfSequence
+            return inputTensor, axisAngle, t, seqIdx, frame1_idx, frame2_idx, endOfSequence
         # Quaternion parameterization: representation rotations as quaternions
         elif self.parameterization == 'quaternion':
             quat = np.asarray(r2q(R)).reshape((1, 4))
             quaternion = (torch.from_numpy(quat).view(-1, 4)).float().cuda()
-            return inputTensor, quaternion, t, seqIdx, frame1, frame2, endOfSequence
+            return inputTensor, quaternion, t, seqIdx, frame1_idx, frame2_idx, endOfSequence
         # Euler parameterization: representation rotations as Euler angles
         elif self.parameterization == 'euler':
             rx, ry, rz = tr2eul(R, seq='xyz')
             euler = (10. * torch.FloatTensor([rx, ry, rz]).view(-1, 3)).cuda()
-            return inputTensor, euler, t, seqIdx, frame1, frame2, endOfSequence
+            return inputTensor, euler, t, seqIdx, frame1_idx, frame2_idx, endOfSequence
         elif self.parameterization == 'se3':
-
             R = pose2[0:3, 0:3]
             t = (torch.from_numpy(pose2[0:3, 3]).view(-1, 3)).float().cuda()
             quat = np.asarray(r2q(R)).reshape((1, 4))
             quaternion = (torch.from_numpy(quat).view(-1, 4)).float().cuda()
-            return inputTensor, quaternion, t, seqIdx, frame1, frame2, endOfSequence
-
-    # return (seqIdx, frame1, frame2)
+            return inputTensor, quaternion, t, seqIdx, frame1_idx, frame2_idx, endOfSequence
 
     # Center and scale the image, resize and perform other preprocessing tasks
     def preprocess_img(self, img):
-
         # Subtract the mean R,G,B pixels
         img[:, :, 0] = (img[:, :, 0] - self.channelwiseMean[0]) / (self.channelwiseStdDev[0])
         img[:, :, 1] = (img[:, :, 1] - self.channelwiseMean[1]) / (self.channelwiseStdDev[1])
@@ -170,5 +164,4 @@ class KITTIDataset(Dataset):
         # Torch expects NCWH
         img = torch.from_numpy(img)
         img = img.permute(2, 0, 1)
-
         return img
