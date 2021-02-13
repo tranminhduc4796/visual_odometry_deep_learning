@@ -9,7 +9,7 @@ from torch import nn
 # DeepVO model
 class DeepVO(nn.Module):
     def __init__(self, img_w, img_h, seq_len, batch_size, activation='relu', parameterization='default',
-                 dropout=0.0, flownet_weights_path=None, num_lstm_cells=2):
+                 dropout=0.3, flownet_weights_path=None, num_lstm_cells=2):
         super(DeepVO, self).__init__()
 
         self.img_w = int(img_w)
@@ -20,8 +20,8 @@ class DeepVO(nn.Module):
         if self.img_w < 64 or self.img_h < 64:
             raise ValueError('The width and height for an input image must be at least 64 px.')
 
-        # The feature map is scaled down 64 times after Conv
-        self.lstm_input_size = int((self.img_w * self.img_h) / (4 * self.seq_len))
+        # The feature map's width and height are scaled down 64 times after Conv.
+        self.lstm_input_size = int(1024 * (self.img_w * self.img_h) / (64 * 64))
 
         self.activation = activation
         self.parameterization = parameterization
@@ -43,10 +43,6 @@ class DeepVO(nn.Module):
             self.use_flownet = True
             self.flownet_weights_path = flownet_weights_path
             self.load_flownet_weights()
-
-        """
-        Initialize variables required for the network
-        """
 
         # CONV Architecture
         self.flownet = nn.Sequential(
@@ -75,11 +71,11 @@ class DeepVO(nn.Module):
         self.LSTM_R = nn.LSTM(self.lstm_input_size, 1024, self.num_lstm_cells)
         self.LSTM_T = nn.LSTM(self.lstm_input_size, 1024, self.num_lstm_cells)
 
-        self.h_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
-        self.c_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
+        self.h_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
+        self.c_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
 
-        self.h_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
-        self.c_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
+        self.h_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
+        self.c_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
 
         self.fc1_R = nn.Linear(1024, 128)
         self.fc1_T = nn.Linear(1024, 128)
@@ -94,16 +90,26 @@ class DeepVO(nn.Module):
 
         self.fc_trans = nn.Linear(32, 3)
 
-    def forward(self, x):
-        x = self.flownet(x)
-        tmp = x.clone()
+    def forward(self, input_tensor):
+        """
+        :param input_tensor: Shape of [Batch size x Sequence Length x Channel x Width x Height]
+        """
+        feature_maps = []
+
+        # Forward sequences of images into flownet one by one
+        for x in input_tensor:
+            feature_map = self.flownet(x)
+            feature_maps.append(feature_map)
+
+        input_tensor = torch.stack(feature_maps)
 
         # Reshape output of Conv to feed into LSTM
-        x = x.view(self.seq_len, self.lstm_input_size)
-        x = x.unsqueeze(1)
+        input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
+        input_tensor = input_tensor.view(self.seq_len, self.batch_size, self.lstm_input_size)
+        input_tensor = input_tensor.cuda()
 
-        o_R, (self.h_R, self.c_R) = self.LSTM_R(x, (self.h_R, self.c_R))
-        o_T, (self.h_T, self.c_T) = self.LSTM_T(x, (self.h_T, self.c_T))
+        o_R, (self.h_R, self.c_R) = self.LSTM_R(input_tensor, (self.h_R, self.c_R))
+        o_T, (self.h_T, self.c_T) = self.LSTM_T(input_tensor, (self.h_T, self.c_T))
 
         # Forward pass through the FC layers
         output_fc1_R = F.relu(self.fc1_R(o_R))
@@ -122,7 +128,7 @@ class DeepVO(nn.Module):
 
         output_rot = self.fc_rot(output_fc2_R)
         output_trans = self.fc_trans(output_fc2_T)
-        return output_rot, output_trans, tmp
+        return output_rot, output_trans
 
     # Initialize the weights of the network
     def init_weights(self):
@@ -160,11 +166,11 @@ class DeepVO(nn.Module):
                         bias.data[start:end].fill_(1.)
 
     def reset_lstm_hidden(self):
-        self.h_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
-        self.c_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
+        self.h_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
+        self.c_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
 
-        self.h_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
-        self.c_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024)
+        self.h_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
+        self.c_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
 
     def detach_lstm_hidden(self):
         self.h_R = self.h_R.detach()

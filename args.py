@@ -28,6 +28,7 @@ parser.add_argument('-outputParameterization', help='Parameterization of egomoti
                     type=str.lower, choices=['default', 'quaternion', 'se3', 'euler'], default='default')
 
 """ Hyper-parameters """
+parser.add_argument('-batch_size', help='Number of samples in an iteration', type=int, default=2)
 parser.add_argument('-lr', help='Learning rate', type=float, default=1e-5)
 parser.add_argument('-momentum', help='Momentum', type=float, default=0.009)
 parser.add_argument('-weight_decay', help='Weight decay', type=float, default=0.)
@@ -47,7 +48,8 @@ parser.add_argument('-lrScheduler', help='Learning rate scheduler', type=str.low
                     choices=['cosine', 'plateau'], default='cosine')
 
 parser.add_argument('-epochs', help='Number of epochs', type=int, default=200)
-parser.add_argument('-seq_len', help='train batch size', type=int, default=300)
+parser.add_argument('-seq_len', help='Number of frames are involved to predict the poses at each time-steps',
+                    type=int, default=3)
 
 parser.add_argument('-scf', help='Scaling factor for the rotation loss terms',
                     type=float, default=100)

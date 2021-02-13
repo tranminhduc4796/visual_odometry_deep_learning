@@ -77,6 +77,7 @@ class Trainer:
         labelTensor_trans = None
         labelTensor_rot = None
 
+        # TO DO
         # Run a pass of the dataset
         for i in gen:
             if self.config.profileGPUUsage is True:
@@ -102,7 +103,6 @@ class Trainer:
 
             elapsedFrames += 1
 
-            # if endOfSeq is True:
             if elapsedFrames >= self.config.seq_len or endOfSeq is True:
 
                 # Flush gradient buffers for next forward pass
@@ -177,7 +177,6 @@ class Trainer:
 
                 # Perform gradient clipping, if enabled
                 if self.config.gradClip is not None:
-
                     torch.nn.utils.clip_grad_norm_(rotParameters, self.config.gradClip)
                     torch.nn.utils.clip_grad_norm_(transParameters, self.config.gradClip)
                     paramIt = 0
@@ -301,11 +300,11 @@ class Trainer:
 
                 if endOfSeq is True:
                     # Print stats
-                    tqdm.write('Rot Loss: ' + str(np.mean(rotLosses)) + ' Trans Loss: ' + \
+                    tqdm.write('Rot Loss: ' + str(np.mean(rotLosses)) + ' Trans Loss: ' +
                                str(np.mean(transLosses)), file=sys.stdout)
                     tqdm.write('Total Loss: ' + str(np.mean(totalLosses)), file=sys.stdout)
                     # Write predicted trajectory to file
-                    saveFile = os.path.join(self.config.expDir, 'plots', 'traj', str(seq).zfill(2), \
+                    saveFile = os.path.join(self.config.expDir, 'plots', 'traj', str(seq).zfill(2),
                                             'traj_' + str(self.curEpoch).zfill(3) + '.txt')
                     np.savetxt(saveFile, traj_pred, newline='\n')
 

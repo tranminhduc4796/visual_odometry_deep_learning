@@ -86,9 +86,11 @@ if config.tensorboardX is True:
 """ Model Definition + Weight init + FlowNet weight loading """
 
 # Get the definition of the model
-deepVO = DeepVO(config.img_w, config.img_h, config.seq_len, 1, activation=config.activation,
+deepVO = DeepVO(config.img_w, config.img_h, config.seq_len, config.batch_size,
+                activation=config.activation,
                 parameterization=config.outputParameterization,
-                dropout=config.dropout, flownet_weights_path=config.loadModel,
+                dropout=config.dropout,
+                flownet_weights_path=config.loadModel,
                 num_lstm_cells=config.num_lstm_cells)
 
 deepVO.init_weights()
@@ -101,7 +103,9 @@ print('Loaded! Good to launch!')
 criterion = nn.MSELoss(reduction='sum')
 
 if config.optMethod == 'adam':
-    optimizer = optim.Adam(deepVO.parameters(), lr=config.lr, betas=(config.beta1, config.beta2),
+    optimizer = optim.Adam(deepVO.parameters(),
+                           lr=config.lr,
+                           betas=(config.beta1, config.beta2),
                            weight_decay=config.weight_decay,
                            amsgrad=False)
 elif config.optMethod == 'sgd':
@@ -112,6 +116,7 @@ else:
                               weight_decay=config.weight_decay)
 
 # Initialize scheduler, if specified
+scheduler = None
 if config.lrScheduler is not None:
     if config.lrScheduler == 'cosine':
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.epochs)
@@ -160,7 +165,7 @@ for epoch in range(config.epochs):
     # Initialize a trainer (Note that any accumulated gradients on the model are flushed
     # upon creation of this Trainer object)
     trainer = Trainer(config, epoch, deepVO, kitti_train, kitti_val, optimizer,
-                      scheduler=None)
+                      scheduler=scheduler)
 
     # weightb4 = []
     # for name, param in deepVO.named_parameters():
