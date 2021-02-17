@@ -47,8 +47,6 @@ class KITTIDataset(Dataset):
 
         # Parameterization to be used to represent the transformation
         self.parameterization = parameterization
-        # Variable to hold length of the dataset
-        self.length = 0
 
         # Verify input config
         self._verify()
@@ -58,7 +56,7 @@ class KITTIDataset(Dataset):
 
     # Get dataset size
     def __len__(self):
-        return self.length
+        return len(self.df)
 
     # TO DO
     def __getitem__(self, idx):
@@ -134,9 +132,6 @@ class KITTIDataset(Dataset):
             if self.endFrames[i] < 0 or self.endFrames[i] <= self.startFrames[i] or \
                     self.endFrames[i] > self.KITTIMaxFrames[seq]:
                 raise ValueError('Invalid endFrame for sequence', str(seq).zfill(2))
-            self.length += (self.endFrames[i] - self.startFrames[i])
-        if self.length < 0:
-            raise ValueError('Length of the dataset cannot be negative.')
 
     def _init_dataframe(self):
         """

@@ -91,11 +91,13 @@ def main():
 
     train_set = KITTIDataset(config.datadir,
                              sequences=train_seq,
+                             sequence_len=config.seq_len,
                              start_frames=train_startFrames, end_frames=train_endFrames,
                              parameterization=config.outputParameterization,
                              width=config.img_w, height=config.img_h)
     val_set = KITTIDataset(config.datadir,
                            sequences=val_seq,
+                           sequence_len=config.seq_len,
                            start_frames=val_startFrames, end_frames=val_endFrames,
                            parameterization=config.outputParameterization,
                            width=config.img_w, height=config.img_h)
@@ -165,6 +167,9 @@ def train(loader, model, criterion, optimizer, config, scheduler):
 
         R_pred, t_pred = model.forward(tensor)
 
+        R_pred = R_pred.permute(1, 0, 2)
+        t_pred = t_pred.permute(1, 0, 2)
+
         R_loss = criterion(R_pred, R)
         t_loss = criterion(t_pred, t)
 
@@ -201,7 +206,16 @@ def val(loader, model, criterion):
 
     for data in tqdm(loader):
         tensor, R, t = data
+
+        # Load all data to CUDA
+        tensor = tensor.cuda(non_blocking=True)
+        R = R.cuda(non_blocking=True)
+        t = t.cuda(non_blocking=True)
+
         R_pred, t_pred = model.forward(tensor)
+
+        R_pred = R_pred.permute(1, 0, 2)
+        t_pred = t_pred.permute(1, 0, 2)
 
         R_loss = criterion(R, R_pred)
         t_loss = criterion(t, t_pred)
