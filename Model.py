@@ -184,3 +184,6 @@ class DeepVO(nn.Module):
         update_dict = {param: val for param, val in
                        zip(self.flownet.state_dict().keys(), pretrained_weights['state_dict'].values())}
         self.flownet.load_state_dict(update_dict)
+        # Freeze pre-trained weights
+        for name, param in self.flownet.named_parameters():
+            param.requires_grad = False

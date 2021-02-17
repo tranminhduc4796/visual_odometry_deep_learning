@@ -90,12 +90,9 @@ parser.add_argument('-sbatch',
 
 """ Reproducibility """
 parser.add_argument('-seed', help='Seed for pseudorandom number generator',
-                    type=int, default=12345)
-parser.add_argument('-isDeterministic',
-                    help='Whether or not the code should use the provided random seed and run deterministically',
-                    type=bool, default=False)
+                    type=int, default=49)
 parser.add_argument('-workers',
                     help='Number of threads available to the DataLoader',
                     type=int, default=1)
 
-arguments = parser.parse_args()
+config = parser.parse_args()

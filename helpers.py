@@ -1,6 +1,9 @@
 # Script containing helper functions used in a few other files
 import math
 import subprocess
+import os
+import torch
+import shutil
 
 
 def first_ge(sorted_list, input_key):
@@ -45,3 +48,31 @@ def get_gpu_memory_map():
 	gpu_memory = [int(x) for x in result.strip().split('\n')]
 	gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
 	return gpu_memory_map
+
+
+def init_dir_structure(config, exp_dir):
+	config.basedir = os.path.dirname(os.path.realpath(__file__))
+	if not os.path.exists(os.path.join(config.basedir, config.cache_dir, config.dataset)):
+		os.makedirs(os.path.join(config.basedir, config.cache_dir, config.dataset))
+	if not os.path.exists(exp_dir):
+		os.makedirs(exp_dir)
+		print('Created dir: ', exp_dir)
+	if not os.path.exists(os.path.join(exp_dir, 'models')):
+		os.makedirs(os.path.join(exp_dir, 'models'))
+		print('Created dir: ', os.path.join(exp_dir, 'models'))
+	if not os.path.exists(os.path.join(exp_dir, 'plots', 'traj')):
+		os.makedirs(os.path.join(exp_dir, 'plots', 'traj'))
+		print('Created dir: ', os.path.join(exp_dir, 'plots', 'traj'))
+	if not os.path.exists(os.path.join(exp_dir, 'plots', 'loss')):
+		os.makedirs(os.path.join(exp_dir, 'plots', 'loss'))
+		print('Created dir: ', os.path.join(exp_dir, 'plots', 'loss'))
+	for seq in range(11):
+		if not os.path.exists(os.path.join(exp_dir, 'plots', 'traj', str(seq).zfill(2))):
+			os.makedirs(os.path.join(exp_dir, 'plots', 'traj', str(seq).zfill(2)))
+			print('Created dir: ', os.path.join(exp_dir, 'plots', 'traj', str(seq).zfill(2)))
+
+
+def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+	torch.save(state, filename)
+	if is_best:
+		shutil.copyfile(filename, 'model_best.pth.tar')
