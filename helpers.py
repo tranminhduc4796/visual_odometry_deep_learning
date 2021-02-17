@@ -50,10 +50,9 @@ def get_gpu_memory_map():
 	return gpu_memory_map
 
 
-def init_dir_structure(config, exp_dir):
-	config.basedir = os.path.dirname(os.path.realpath(__file__))
-	if not os.path.exists(os.path.join(config.basedir, config.cache_dir, config.dataset)):
-		os.makedirs(os.path.join(config.basedir, config.cache_dir, config.dataset))
+def init_dir_structure(config, base_dir, exp_dir):
+	if not os.path.exists(os.path.join(base_dir, config.cache_dir, config.dataset)):
+		os.makedirs(os.path.join(base_dir, config.cache_dir, config.dataset))
 	if not os.path.exists(exp_dir):
 		os.makedirs(exp_dir)
 		print('Created dir: ', exp_dir)

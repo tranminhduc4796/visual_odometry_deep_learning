@@ -74,7 +74,10 @@ class KITTIDataset(Dataset):
             R_seq.append(R)
             t_seq.append(t)
 
-        input_tensor_seq = torch.stack(input_tensor_seq).float().cuda()
+        # Convert all item to Torch tensor
+        input_tensor_seq = torch.stack(input_tensor_seq).float()
+        R_seq = torch.cat(R_seq).float()
+        t_seq = torch.cat(t_seq).float()
         return input_tensor_seq, R_seq, t_seq
 
     # Center and scale the image, resize and perform other preprocessing tasks
@@ -97,21 +100,21 @@ class KITTIDataset(Dataset):
         # Compute relative pose from frame1 to frame2
         pose2wrt1 = np.dot(np.linalg.inv(pose1), pose2)
         R = pose2wrt1[0:3, 0:3]
-        t = (torch.from_numpy(pose2wrt1[0:3, 3]).view(-1, 3)).float().cuda()
+        t = (torch.from_numpy(pose2wrt1[0:3, 3]).view(-1, 3)).float()
 
         # Default parameterization: representation rotations as axis-angle vectors
         if self.parameterization == 'default':
-            axisAngle = (torch.from_numpy(np.asarray(tr2rpy(R))).view(-1, 3)).float().cuda()
+            axisAngle = (torch.from_numpy(np.asarray(tr2rpy(R))).view(-1, 3)).float()
             return axisAngle, t
         # Quaternion parameterization: representation rotations as quaternions
         elif self.parameterization == 'quaternion':
             quaternion = np.asarray(r2q(R)).reshape((1, 4))
-            quaternion = (torch.from_numpy(quaternion).view(-1, 4)).float().cuda()
+            quaternion = (torch.from_numpy(quaternion).view(-1, 4)).float()
             return quaternion, t
         # Euler parameterization: representation rotations as Euler angles
         elif self.parameterization == 'euler':
             rx, ry, rz = tr2eul(R)
-            euler = (10. * torch.FloatTensor([rx, ry, rz]).view(-1, 3)).cuda()
+            euler = (10. * torch.FloatTensor([rx, ry, rz]).view(-1, 3)).float()
             return euler, t
 
     def _verify(self):
@@ -167,9 +170,9 @@ class KITTIDataset(Dataset):
         img1 = self.preprocess_img(img1)
         img2 = self.preprocess_img(img2)
 
-        # Concatenate the images along the channel dimension (and CUDAfy them)
-        pair = torch.cat((img1, img2), 0).unsqueeze(0)
-        tensor = pair.float().cuda()
+        # Concatenate the images along the channel dimension
+        pair = torch.cat((img1, img2), 0)
+        tensor = pair.float()
 
         # Load pose ground-truth
         R, t = self.get_ground_truth(seq_idx, frame1_idx, frame2_idx)

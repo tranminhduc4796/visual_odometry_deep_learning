@@ -71,12 +71,6 @@ class DeepVO(nn.Module):
         self.LSTM_R = nn.LSTM(self.lstm_input_size, 1024, self.num_lstm_cells)
         self.LSTM_T = nn.LSTM(self.lstm_input_size, 1024, self.num_lstm_cells)
 
-        self.h_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-        self.c_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-
-        self.h_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-        self.c_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-
         self.fc1_R = nn.Linear(1024, 128)
         self.fc1_T = nn.Linear(1024, 128)
 
@@ -106,10 +100,9 @@ class DeepVO(nn.Module):
         # Reshape output of Conv to feed into LSTM
         input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
         input_tensor = input_tensor.view(self.seq_len, self.batch_size, self.lstm_input_size)
-        input_tensor = input_tensor.cuda()
 
-        o_R, (self.h_R, self.c_R) = self.LSTM_R(input_tensor, (self.h_R, self.c_R))
-        o_T, (self.h_T, self.c_T) = self.LSTM_T(input_tensor, (self.h_T, self.c_T))
+        o_R, (h_R, c_R) = self.LSTM_R(input_tensor)
+        o_T, (h_T, c_T) = self.LSTM_T(input_tensor)
 
         # Forward pass through the FC layers
         output_fc1_R = F.relu(self.fc1_R(o_R))
@@ -164,20 +157,6 @@ class DeepVO(nn.Module):
                         n = bias.size(0)
                         start, end = n // 4, n // 2
                         bias.data[start:end].fill_(1.)
-
-    def reset_lstm_hidden(self):
-        self.h_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-        self.c_R = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-
-        self.h_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-        self.c_T = torch.zeros(self.num_lstm_cells, self.batch_size, 1024).cuda()
-
-    def detach_lstm_hidden(self):
-        self.h_R = self.h_R.detach()
-        self.c_R = self.c_R.detach()
-
-        self.h_T = self.h_T.detach()
-        self.c_T = self.c_T.detach()
 
     def load_flownet_weights(self):
         pretrained_weights = torch.load(self.flownet_weights_path)['state_dict']
