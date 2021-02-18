@@ -82,12 +82,12 @@ def main():
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer)
 
     """Load dataset"""
-    train_seq = [0]
+    train_seq = [1]
     train_startFrames = [0]
-    train_endFrames = [4500]
-    val_seq = [0]
+    train_endFrames = [1100]
+    val_seq = [1]
     val_startFrames = [0]
-    val_endFrames = [4500]
+    val_endFrames = [1100]
 
     train_set = KITTIDataset(config.datadir,
                              sequences=train_seq,
@@ -153,11 +153,12 @@ def train(loader, model, criterion, optimizer, config, scheduler):
     model.train()  # Switch to train mode
 
     # Cache loss to tracking training progress
-    avg_loss = 0
-    R_avg_loss = 0
-    t_avg_loss = 0
+    sum_loss = 0
+    R_sum_loss = 0
+    t_sum_loss = 0
 
-    for data in tqdm(loader):
+    stat_bar = tqdm(enumerate(loader), total=len(loader), position=0, leave=True)
+    for idx, data in stat_bar:
         tensor, R, t = data
 
         # Load all data to CUDA
@@ -177,9 +178,9 @@ def train(loader, model, criterion, optimizer, config, scheduler):
 
         # float() is really important here.
         # It helps to avoid storing autograd history which may lead to out of memory.
-        avg_loss += float(loss)
-        R_avg_loss += float(R_loss)
-        t_avg_loss += float(t_loss)
+        sum_loss += float(loss)
+        R_sum_loss += float(R_loss)
+        t_sum_loss += float(t_loss)
 
         optimizer.zero_grad()
         loss.backward()
@@ -189,9 +190,15 @@ def train(loader, model, criterion, optimizer, config, scheduler):
         if config.lrScheduler is not None:
             scheduler.step()
 
-    avg_loss /= len(loader)
-    R_avg_loss /= len(loader)
-    t_avg_loss /= len(loader)
+        stat_bar.set_description('Train {}/{}:'.format(idx, len(loader)))
+        stat_bar.set_postfix({'r_loss': '{:.6f}'.format(R_sum_loss / (idx + 1)),
+                              't_loss': '{:.6f}'.format(t_sum_loss / (idx + 1)),
+                              'total_loss': '{:.6f}'.format(sum_loss / (idx + 1))
+                              })
+
+    avg_loss = sum_loss / len(loader)
+    R_avg_loss = R_sum_loss / len(loader)
+    t_avg_loss = t_sum_loss / len(loader)
 
     return avg_loss, R_avg_loss, t_avg_loss
 
@@ -200,35 +207,44 @@ def val(loader, model, criterion):
     model.eval()
 
     # Cache loss to tracking training progress
-    avg_loss = 0
-    R_avg_loss = 0
-    t_avg_loss = 0
+    sum_loss = 0
+    R_sum_loss = 0
+    t_sum_loss = 0
 
-    for data in tqdm(loader):
-        tensor, R, t = data
+    stat_bar = tqdm(enumerate(loader), total=len(loader), position=0, leave=True)
 
-        # Load all data to CUDA
-        tensor = tensor.cuda(non_blocking=True)
-        R = R.cuda(non_blocking=True)
-        t = t.cuda(non_blocking=True)
+    with torch.no_grad():
+        for idx, data in stat_bar:
+            tensor, R, t = data
 
-        R_pred, t_pred = model.forward(tensor)
+            # Load all data to CUDA
+            tensor = tensor.cuda(non_blocking=True)
+            R = R.cuda(non_blocking=True)
+            t = t.cuda(non_blocking=True)
 
-        R_pred = R_pred.permute(1, 0, 2)
-        t_pred = t_pred.permute(1, 0, 2)
+            R_pred, t_pred = model.forward(tensor)
 
-        R_loss = criterion(R, R_pred)
-        t_loss = criterion(t, t_pred)
+            R_pred = R_pred.permute(1, 0, 2)
+            t_pred = t_pred.permute(1, 0, 2)
 
-        loss = config.scf * R_loss + t_loss
+            R_loss = criterion(R, R_pred)
+            t_loss = criterion(t, t_pred)
 
-        avg_loss += loss.item()
-        R_avg_loss += R_loss.item()
-        t_avg_loss += t_loss.item()
+            loss = config.scf * R_loss + t_loss
 
-    avg_loss /= len(loader)
-    R_avg_loss /= len(loader)
-    t_avg_loss /= len(loader)
+            sum_loss += loss.item()
+            R_sum_loss += R_loss.item()
+            t_sum_loss += t_loss.item()
+
+            stat_bar.set_description('Validate {}/{}:'.format(idx, len(loader)))
+            stat_bar.set_postfix({'r_loss': '{:.6f}'.format(R_sum_loss / (idx + 1)),
+                                  't_loss': '{:.6f}'.format(t_sum_loss / (idx + 1)),
+                                  'total_loss': '{:.6f}'.format(sum_loss / (idx + 1))
+                                  })
+
+    avg_loss = sum_loss / len(loader)
+    R_avg_loss = R_sum_loss / len(loader)
+    t_avg_loss = t_sum_loss / len(loader)
 
     return avg_loss, R_avg_loss, t_avg_loss
 
