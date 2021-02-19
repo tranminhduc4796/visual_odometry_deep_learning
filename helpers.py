@@ -71,7 +71,7 @@ def init_dir_structure(config, base_dir, exp_dir):
 			print('Created dir: ', os.path.join(exp_dir, 'plots', 'traj', str(seq).zfill(2)))
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-	torch.save(state, filename)
+def save_checkpoint(state, exp_dir, is_best, filename='checkpoint.pth.tar'):
+	torch.save(state, os.path.join(exp_dir, filename))
 	if is_best:
-		shutil.copyfile(filename, 'model_best.pth.tar')
+		shutil.copyfile(os.path.join(exp_dir, filename), os.path.join(exp_dir, 'model_best.pth.tar'))

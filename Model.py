@@ -159,10 +159,14 @@ class DeepVO(nn.Module):
                         bias.data[start:end].fill_(1.)
 
     def load_flownet_weights(self):
+        print('Use pre-trained flownet. Loading pre-trained weights...')
         pretrained_weights = torch.load(self.flownet_weights_path)['state_dict']
         update_dict = {param: val for param, val in
                        zip(self.flownet.state_dict().keys(), pretrained_weights['state_dict'].values())}
         self.flownet.load_state_dict(update_dict)
+        print('Finish!')
         # Freeze pre-trained weights
+        print('Freezing flownet weights...')
         for name, param in self.flownet.named_parameters():
             param.requires_grad = False
+        print('Finish')

@@ -76,7 +76,8 @@ class KITTIDataset(Dataset):
         input_tensor_seq = torch.stack(input_tensor_seq).float()
         R_seq = torch.cat(R_seq).float()
         t_seq = torch.cat(t_seq).float()
-        return input_tensor_seq, R_seq, t_seq
+        vid_seq_idx = torch.from_numpy(np.array(vid_seq_idx))
+        return input_tensor_seq, R_seq, t_seq, vid_seq_idx
 
     # Center and scale the image, resize and perform other preprocessing tasks
     def preprocess_img(self, img):

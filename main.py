@@ -11,7 +11,7 @@ from helpers import init_dir_structure, save_checkpoint
 from KITTIDataset import KITTIDataset
 from Model import DeepVO
 import matplotlib.pyplot as plt
-from plotTrajectories import plot_seq
+from plotTrajectories import plot_seq, write_pred_traj
 
 
 def main():
@@ -38,11 +38,6 @@ def main():
         print('Save config setting at', os.path.join(exp_dir, 'args.txt'))
         for arg in vars(config):
             f.write(arg + ' ' + str(getattr(config, arg)) + '\n')
-
-    # TensorboardX visualization support
-    if config.tensorboardX is True:
-        from tensorboardX import SummaryWriter
-        writer = SummaryWriter(log_dir=exp_dir)
 
     """Init model"""
     print('Loading model to GPU...')
@@ -128,16 +123,20 @@ def main():
         if min_val_loss is None:
             min_val_loss = avg_val_loss
         if avg_val_loss < min_val_loss:
+            print('Saving best model...')
             save_checkpoint({
                 'epoch': epoch,
                 'state_dict': deepVO.state_dict(),
                 'optimizer': optimizer.state_dict(),
-            }, is_best=True)
+            }, exp_dir, is_best=True)
+            print('Finish!')
         if epoch != 0 and epoch % 5 == 0:
+            print('Saving checkpoint...')
             save_checkpoint({
                 'state_dict': deepVO.state_dict(),
                 'optimizer': optimizer.state_dict(),
-            }, is_best=False, filename=f'{exp_dir}/checkpoint_{epoch}.pth.tar')
+            }, exp_dir, is_best=False, filename=f'checkpoint_{epoch}.pth.tar')
+            print('Finish!')
 
     # Draw training, valid curves
     fig, ax = plt.subplots(1)
@@ -147,6 +146,9 @@ def main():
     plt.ylabel('Loss')
     plt.xlabel('Epoch #')
     fig.savefig(os.path.join(exp_dir, 'loss_curve'))
+
+    # Use the best weights to draw map
+    test(exp_dir, val_set, deepVO)
 
 
 def train(loader, model, criterion, optimizer, config, scheduler):
@@ -159,7 +161,7 @@ def train(loader, model, criterion, optimizer, config, scheduler):
 
     stat_bar = tqdm(enumerate(loader), total=len(loader), position=0, leave=True)
     for idx, data in stat_bar:
-        tensor, R, t = data
+        tensor, R, t, _ = data
 
         # Load all data to CUDA
         tensor = tensor.cuda(non_blocking=True)
@@ -215,7 +217,7 @@ def val(loader, model, criterion):
 
     with torch.no_grad():
         for idx, data in stat_bar:
-            tensor, R, t = data
+            tensor, R, t, _ = data
 
             # Load all data to CUDA
             tensor = tensor.cuda(non_blocking=True)
@@ -247,6 +249,42 @@ def val(loader, model, criterion):
     t_avg_loss = t_sum_loss / len(loader)
 
     return avg_loss, R_avg_loss, t_avg_loss
+
+
+def test(exp_dir, dataset, model):
+    best_path = os.path.join(exp_dir, 'model_best.pth.tar')
+    print('Loading best weights./..')
+    state_dict = torch.load(best_path)['state_dict']
+    model.load_state_dict(state_dict)
+    print('Finish')
+    model.eval()
+
+    stat_bar = tqdm(enumerate(dataset), total=len(dataset), position=0, leave=True)
+
+    with torch.no_grad():
+        for idx, data in stat_bar:
+            tensor, _, _, vid_seq_id = data
+
+            path = os.path.join(exp_dir, 'plots', 'traj', str(vid_seq_id).zfill(2), 'traj.txt')
+
+            # Load input to CUDA
+            tensor = tensor.cuda(non_blocking=True)
+
+            R_pred, t_pred = model.forward(tensor)
+
+            R_pred = R_pred.permute(1, 0, 2)
+            t_pred = t_pred.permute(1, 0, 2)
+
+            write_pred_traj(path, R_pred, t_pred)
+
+    vid_seq_ids = dataset.df.sequence_idx.unique()
+
+    for vid_seq_id in vid_seq_ids:
+        seqLen = len(dataset)
+        traj_pred_file = os.path.join(exp_dir, 'plots', 'traj', str(vid_seq_id).zfill(2), 'traj.txt')
+        if os.path.exists(traj_pred_file):
+            traj_predicts = np.loadtxt(traj_pred_file)
+            plot_seq(config.expDir, vid_seq_id, seqLen, traj_predicts, config.datadir, config)
 
 
 if __name__ == '__main__':
