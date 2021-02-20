@@ -77,12 +77,20 @@ def main():
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer)
 
     """Load dataset"""
-    train_seq = [1]
-    train_startFrames = [0]
-    train_endFrames = [1100]
-    val_seq = [1]
-    val_startFrames = [0]
-    val_endFrames = [1100]
+    if config.debug is True:
+        train_seq = [1]
+        train_startFrames = [0]
+        train_endFrames = [1100]
+        val_seq = [1]
+        val_startFrames = [0]
+        val_endFrames = [1100]
+    else:
+        train_seq = [0, 1, 2, 8, 9]
+        train_startFrames = [0, 0, 0, 0, 0]
+        train_endFrames = [4540, 1100, 4660, 4070, 1590]
+        val_seq = [3, 4, 5, 6, 7, 10]
+        val_startFrames = [0, 0, 0, 0, 0]
+        val_endFrames = [800, 270, 2760, 1100, 1100, 1200]
 
     train_set = KITTIDataset(config.datadir,
                              sequences=train_seq,
