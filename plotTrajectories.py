@@ -17,8 +17,8 @@ def write_pred_traj(path, rot_pred, trans_pred):
     :param trans_pred: [1, seq_len, 3]
     """
     # Only consider the first step
-    rot_pred = rot_pred.detach().numpy()
-    trans_pred = trans_pred.detach().numpy()
+    rot_pred = rot_pred.detach().cpu().numpy()
+    trans_pred = trans_pred.detach().cpu().numpy()
     rot_pred = rot_pred[0, 0, :]
     trans_pred = trans_pred[0, 0, :]
 

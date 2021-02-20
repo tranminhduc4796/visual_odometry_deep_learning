@@ -148,6 +148,7 @@ def main():
     fig.savefig(os.path.join(exp_dir, 'loss_curve'))
 
     # Use the best weights to draw map
+    print('===> Testing')
     test(exp_dir, val_set, deepVO)
 
 
@@ -264,7 +265,8 @@ def test(exp_dir, dataset, model):
     with torch.no_grad():
         for idx, data in stat_bar:
             tensor, _, _, vid_seq_id = data
-
+            tensor = tensor.unsqueeze(0)
+            vid_seq_id = vid_seq_id.item()
             path = os.path.join(exp_dir, 'plots', 'traj', str(vid_seq_id).zfill(2), 'traj.txt')
 
             # Load input to CUDA
@@ -284,7 +286,7 @@ def test(exp_dir, dataset, model):
         traj_pred_file = os.path.join(exp_dir, 'plots', 'traj', str(vid_seq_id).zfill(2), 'traj.txt')
         if os.path.exists(traj_pred_file):
             traj_predicts = np.loadtxt(traj_pred_file)
-            plot_seq(config.expDir, vid_seq_id, seqLen, traj_predicts, config.datadir, config)
+            plot_seq(exp_dir, vid_seq_id, seqLen, traj_predicts, config.datadir, config)
 
 
 if __name__ == '__main__':
