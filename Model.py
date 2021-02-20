@@ -38,11 +38,6 @@ class DeepVO(nn.Module):
             self.drop_ratio = dropout
 
         self.num_lstm_cells = num_lstm_cells
-        # Path to FlowNet weights
-        if flownet_weights_path is not None and flownet_weights_path != '':
-            self.use_flownet = True
-            self.flownet_weights_path = flownet_weights_path
-            self.load_flownet_weights()
 
         # CONV Architecture
         self.flownet = nn.Sequential(
@@ -83,6 +78,12 @@ class DeepVO(nn.Module):
             self.fc_rot = nn.Linear(32, 3)
 
         self.fc_trans = nn.Linear(32, 3)
+
+        # Path to FlowNet weights
+        if flownet_weights_path is not None and flownet_weights_path != '':
+            self.use_flownet = True
+            self.flownet_weights_path = flownet_weights_path
+            self.load_flownet_weights()
 
     def forward(self, input_tensor):
         """
@@ -162,7 +163,7 @@ class DeepVO(nn.Module):
         print('Use pre-trained flownet. Loading pre-trained weights...')
         pretrained_weights = torch.load(self.flownet_weights_path)['state_dict']
         update_dict = {param: val for param, val in
-                       zip(self.flownet.state_dict().keys(), pretrained_weights['state_dict'].values())}
+                       zip(self.flownet.state_dict().keys(), pretrained_weights.values())}
         self.flownet.load_state_dict(update_dict)
         print('Finish!')
         # Freeze pre-trained weights
