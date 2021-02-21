@@ -3,7 +3,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 """ Model Options """
-parser.add_argument('-loadModel',
+parser.add_argument('-loadFlowNet',
                     help='Whether or not to load pretrained weights. '
                          'If yes: then specify the path to the saved weights',
                     default=None)
@@ -75,6 +75,8 @@ parser.add_argument('-snapshotStrategy',
                     type=str.lower, choices=['none', 'default', 'best'], default='best')
 parser.add_argument('-tensorboardX', help='Whether or not to use tensorboardX for visualization',
                     type=bool, default=True)
+parser.add_argument('-checkpoint', help='Model checkpoint to continue training',
+                    default=None)
 
 """ Debugging, Profiling, etc. """
 parser.add_argument('-debug',

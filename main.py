@@ -40,15 +40,22 @@ def main():
             f.write(arg + ' ' + str(getattr(config, arg)) + '\n')
 
     """Init model"""
-    print('Loading model to GPU...')
     deepVO = DeepVO(config.img_w, config.img_h, config.seq_len, config.batch_size,
                     activation=config.activation,
                     parameterization=config.outputParameterization,
                     dropout=config.dropout,
-                    flownet_weights_path=config.loadModel,
+                    flownet_weights_path=config.loadFlowNet,
                     num_lstm_cells=config.num_lstm_cells)
 
-    deepVO.init_weights()
+    if config.checkpoint is not None:
+        ckpt_path = os.path.join(config.checkpoint)
+        print('Loading checkpoint...')
+        state_dict = torch.load(ckpt_path)['state_dict']
+        deepVO.load_state_dict(state_dict)
+        print('Finish')
+    else:
+        deepVO.init_weights()
+    print('Loading model to GPU...')
     deepVO.cuda()
     print('Finish!')
 
@@ -67,6 +74,13 @@ def main():
     else:
         optimizer = optim.Adagrad(deepVO.parameters(), lr=config.lr, lr_decay=config.lr_decay,
                                   weight_decay=config.weight_decay)
+
+    if config.checkpoint is not None:
+        ckpt_path = os.path.join(config.checkpoint)
+        print('Loading checkpoint for optimizer...')
+        state_dict = torch.load(ckpt_path)['optimizer']
+        optimizer.load_state_dict(state_dict)
+        print('Finish')
 
     # Scheduler
     scheduler = None
@@ -89,7 +103,7 @@ def main():
         train_startFrames = [0, 0, 0, 0, 0]
         train_endFrames = [4540, 1100, 4660, 4070, 1590]
         val_seq = [3, 4, 5, 6, 7, 10]
-        val_startFrames = [0, 0, 0, 0, 0]
+        val_startFrames = [0, 0, 0, 0, 0, 0]
         val_endFrames = [800, 270, 2760, 1100, 1100, 1200]
 
     train_set = KITTIDataset(config.datadir,
@@ -262,7 +276,7 @@ def val(loader, model, criterion):
 
 def test(exp_dir, dataset, model):
     best_path = os.path.join(exp_dir, 'model_best.pth.tar')
-    print('Loading best weights./..')
+    print('Loading best weights...')
     state_dict = torch.load(best_path)['state_dict']
     model.load_state_dict(state_dict)
     print('Finish')

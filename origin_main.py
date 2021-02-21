@@ -90,7 +90,7 @@ deepVO = DeepVO(config.img_w, config.img_h, config.seq_len, config.batch_size,
                 activation=config.activation,
                 parameterization=config.outputParameterization,
                 dropout=config.dropout,
-                flownet_weights_path=config.loadModel,
+                flownet_weights_path=config.loadFlowNet,
                 num_lstm_cells=config.num_lstm_cells)
 
 deepVO.init_weights()
