@@ -7,7 +7,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 from args import config
-from helpers import init_dir_structure, save_checkpoint
+from helpers import init_dir_structure, save_checkpoint, EarlyStopping
 from KITTIDataset import KITTIDataset
 from Model import DeepVO
 import matplotlib.pyplot as plt
@@ -124,6 +124,7 @@ def main():
 
     """Main loop"""
     min_val_loss = None
+    early_stopping = EarlyStopping(mode='min', patience=5)
 
     loss_each_epoch = []
     val_loss_each_epoch = []
@@ -160,6 +161,10 @@ def main():
                 'optimizer': optimizer.state_dict(),
             }, exp_dir, is_best=False, filename=f'checkpoint_{epoch}.pth.tar')
             print('Finish!')
+
+        # Early stopping if val loss is not improved in a long time.
+        if early_stopping.step(avg_val_loss):
+            break
 
     # Draw training, valid curves
     fig, ax = plt.subplots(1)
