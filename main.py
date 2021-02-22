@@ -218,8 +218,6 @@ def train(loader, model, criterion, optimizer, config, scheduler):
         if config.gradClip is not None:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.gradClip)
         optimizer.step()
-        if config.lrScheduler is not None:
-            scheduler.step()
 
         stat_bar.set_description('Train {}/{}:'.format(idx, len(loader)))
         stat_bar.set_postfix({'r_loss': '{:.6f}'.format(R_sum_loss / (idx + 1)),
@@ -230,6 +228,12 @@ def train(loader, model, criterion, optimizer, config, scheduler):
     avg_loss = sum_loss / len(loader)
     R_avg_loss = R_sum_loss / len(loader)
     t_avg_loss = t_sum_loss / len(loader)
+
+    if config.lrScheduler is not None:
+        if config.lrScheduler == 'plateau':
+            scheduler.step(avg_loss)
+        else:
+            scheduler.step()
 
     return avg_loss, R_avg_loss, t_avg_loss
 
