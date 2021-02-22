@@ -151,8 +151,9 @@ def main():
                 'state_dict': deepVO.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, exp_dir, is_best=True)
+            min_val_loss = avg_val_loss
             print('Finish!')
-        if epoch != 0 and epoch % 5 == 0:
+        if epoch != 0 and (epoch + 1) % 5 == 0:
             print('Saving checkpoint...')
             save_checkpoint({
                 'state_dict': deepVO.state_dict(),
