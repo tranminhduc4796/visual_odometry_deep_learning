@@ -44,8 +44,7 @@ parser.add_argument('-gradClip',
 
 parser.add_argument('-optMethod', help='Optimization method : adam | sgd | adagrad ',
                     type=str.lower, choices=['adam', 'sgd', 'adagrad'], default='adam')
-parser.add_argument('-lrScheduler', help='Learning rate scheduler', type=str.lower,
-                    choices=['cosine', 'plateau'], default='cosine')
+parser.add_argument('-lrScheduler', help='Learning rate scheduler', default=None)
 
 parser.add_argument('-epochs', help='Number of epochs', type=int, default=200)
 parser.add_argument('-seq_len', help='Number of frames are involved to predict the poses at each time-steps',

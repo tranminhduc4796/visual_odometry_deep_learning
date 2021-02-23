@@ -100,7 +100,11 @@ class DeepVO(nn.Module):
 
         # Reshape output of Conv to feed into LSTM
         input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
-        input_tensor = input_tensor.view(self.seq_len, self.batch_size, self.lstm_input_size)
+
+        if self.training:
+            input_tensor = input_tensor.view(self.seq_len, self.batch_size, self.lstm_input_size)
+        else:
+            input_tensor = input_tensor.view(self.seq_len, 1, self.lstm_input_size)
 
         o_R, (h_R, c_R) = self.LSTM_R(input_tensor)
         o_T, (h_T, c_T) = self.LSTM_T(input_tensor)

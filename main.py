@@ -119,7 +119,8 @@ def main():
                            parameterization=config.outputParameterization,
                            width=config.img_w, height=config.img_h)
 
-    train_loader = DataLoader(train_set, batch_size=config.batch_size, num_workers=config.workers, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=config.batch_size, num_workers=config.workers,
+                              shuffle=True, drop_last=True)
     val_loader = DataLoader(val_set, batch_size=1, num_workers=config.workers)
 
     """Main loop"""
@@ -240,7 +241,6 @@ def train(loader, model, criterion, optimizer, config, scheduler):
 
 def val(loader, model, criterion):
     model.eval()
-
     # Cache loss to tracking training progress
     sum_loss = 0
     R_sum_loss = 0
@@ -267,9 +267,9 @@ def val(loader, model, criterion):
 
             loss = config.scf * R_loss + t_loss
 
-            sum_loss += loss.item()
-            R_sum_loss += R_loss.item()
-            t_sum_loss += t_loss.item()
+            sum_loss += float(loss)
+            R_sum_loss += float(R_loss)
+            t_sum_loss += float(t_loss)
 
             stat_bar.set_description('Validate {}/{}:'.format(idx, len(loader)))
             stat_bar.set_postfix({'r_loss': '{:.6f}'.format(R_sum_loss / (idx + 1)),

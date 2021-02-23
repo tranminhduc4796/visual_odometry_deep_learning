@@ -4,6 +4,7 @@ import subprocess
 import os
 import torch
 import shutil
+import numpy as np
 
 
 def first_ge(sorted_list, input_key):
@@ -95,8 +96,7 @@ class EarlyStopping:
 		if self.best is None:
 			self.best = metrics
 			return False
-
-		if torch.isnan(torch.Tensor(metrics).float()):
+		if np.isnan(metrics):
 			return True
 
 		if self.is_better(metrics, self.best):
