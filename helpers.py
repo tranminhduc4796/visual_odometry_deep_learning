@@ -96,7 +96,7 @@ class EarlyStopping:
 			self.best = metrics
 			return False
 
-		if torch.isnan(metrics):
+		if torch.isnan(torch.Tensor(metrics).float()):
 			return True
 
 		if self.is_better(metrics, self.best):
