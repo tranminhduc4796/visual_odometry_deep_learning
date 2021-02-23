@@ -29,7 +29,7 @@ parser.add_argument('-outputParameterization', help='Parameterization of egomoti
 
 """ Hyper-parameters """
 parser.add_argument('-batch_size', help='Number of samples in an iteration', type=int, default=2)
-parser.add_argument('-lr', help='Learning rate', type=float, default=1e-5)
+parser.add_argument('-lr', help='Learning rate', type=float, default=1e-3)
 parser.add_argument('-momentum', help='Momentum', type=float, default=0.009)
 parser.add_argument('-weight_decay', help='Weight decay', type=float, default=0.)
 parser.add_argument('-lr_decay', help='Learning rate decay factor', type=float, default=0.)
